@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accounting OCR Extractor</title>
+    <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #fafafa;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background-color: #eff6ff;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .status-container {
+            display: none;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .status-text {
+            font-weight: 500;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 1.1rem;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #bfdbfe;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .results {
+            display: none;
+            gap: 2rem;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .results-json {
+            flex: 1;
+            min-width: 320px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+
+        .results-image {
+            flex: 2;
+            min-width: 400px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        h3 {
+            margin-top: 0;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 0.8rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+            text-transform: capitalize;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+            background-color: #f9fafb;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-download {
+            background-color: #10b981;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-download:hover {
+            background-color: #059669;
+        }
+
+        .error {
+            color: #b91c1c;
+            background-color: #fef2f2;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+            display: none;
+            margin-top: 1.5rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .results {
+                flex-direction: column;
+            }
+
+            .results-image {
+                order: -1;
+                /* Show image above fields on mobile */
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Financial OCR Extractor</h1>
+            <p>Drop a handwritten accounting image to extract structured entries</p>
+        </div>
+
+        <div class="card">
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label for="globalDateInput">Document Date (Required)</label>
+                <input type="text" id="globalDateInput" placeholder="DD-MM-YYYY">
+            </div>
+            <form id="uploadForm">
+                <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <svg width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"
+                        stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa; margin-bottom: 1rem;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h3 style="border: none; margin: 0; color: #4b5563;">Click or Drag image here to upload</h3>
+                    <p style="color: #9ca3af; margin-top: 0.5rem;">Supports JPG, PNG, WEBP</p>
+                    <input type="file" id="fileInput" accept="image/*">
+                </div>
+            </form>
+
+            <div class="error" id="errorMsg"></div>
+
+            <div class="status-container" id="statusContainer">
+                <div class="status-text">
+                    <div class="spinner"></div>
+                    <span id="statusText">Processing image with PaddleOCR...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="results" id="resultsContainer">
+            <!-- LEFT SIDE: Editable Fields -->
+            <div class="results-json">
+                <h3>Extracted Data</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    Review and manually edit any incorrect OCR values before saving.
+                </p>
+                <div id="editableFields">
+                    <!-- Inputs will be dynamically injected here by JS -->
+                </div>
+                <button class="btn-download" id="downloadBtn" onclick="downloadJSON()">
+                    Download Verified JSON
+                </button>
+                <button class="btn-download" style="background-color: #f97316; margin-top: 0.8rem;" id="n8nBtn"
+                    onclick="sendToN8n()">
+                    Sync to n8n (Sheets)
+                </button>
+                <div id="n8nStatus" style="margin-top: 1rem; text-align: center; font-weight: 500; display: none;">
+                </div>
+            </div>
+
+            <!-- RIGHT SIDE: Image Preview -->
+            <div class="results-image">
+                <h3>OCR Debug Visualization</h3>
+                <img id="debugImage" src="" alt="Debug Matchings">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const statusContainer = document.getElementById('statusContainer');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const editableFields = document.getElementById('editableFields');
+        const debugImage = document.getElementById('debugImage');
+        const errorMsg = document.getElementById('errorMsg');
+        const statusText = document.getElementById('statusText');
+
+        let currentData = null; // Store the latest OCR JSON payload
+
+        // --- Drag and Drop Handling ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        fileInput.addEventListener('change', handleFileSelect, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) uploadFile(files[0]);
+        }
+
+        function handleFileSelect(e) {
+            if (this.files.length > 0) uploadFile(this.files[0]);
+        }
+
+        // --- Uploading and Parsing ---
+        async function uploadFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file.');
+                return;
+            }
+
+            const dateVal = document.getElementById('globalDateInput').value.trim();
+            if (!dateVal) {
+                showError('Please enter the Document Date before uploading.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('date', dateVal);
+
+            statusContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            errorMsg.style.display = 'none';
+            statusText.innerText = "Analyzing image via PaddleOCR... this usually takes 5-10s";
+
+            try {
+                const response = await fetch('/extract', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    statusContainer.style.display = 'none';
+
+                    // Store data and render the editor UI
+                    currentData = result.data;
+                    renderEditableFields(currentData);
+
+                    // Load the image
+                    debugImage.src = result.debug_image + '?t=' + new Date().getTime(); // Prevent caching
+
+                    // Display the container
+                    resultsContainer.style.display = 'flex';
+
+                    // Reset file input
+                    fileInput.value = '';
+                } else {
+                    throw new Error(result.error || 'Server processing error');
+                }
+            } catch (error) {
+                statusContainer.style.display = 'none';
+                showError("Failed to extract data: " + error.message);
+            }
+        }
+
+        function renderEditableFields(data) {
+            editableFields.innerHTML = ''; // Clear existing
+
+            // Date field
+            editableFields.innerHTML += `
+            <div class="form-group">
+                <label for="input-date">Date</label>
+                <input type="text" id="input-date" value="${data.date || ''}" placeholder="DD-MM-YYYY" onchange="updateData('date', this.value)">
+            </div>
+        `;
+
+            // Define all standard expected fields
+            const expectedFields = ['cash', 'gpay', 'system', 'expense', 'addition'];
+
+            expectedFields.forEach(field => {
+                const val = (data.entries && data.entries[field] !== undefined) ? data.entries[field] : '';
+                editableFields.innerHTML += `
+                <div class="form-group">
+                    <label for="input-${field}">${field}</label>
+                    <input type="number" id="input-${field}" value="${val}" placeholder="Amount" onchange="updateEntry('${field}', this.value)">
+                </div>
+            `;
+            });
+        }
+
+        // --- Live Model Updating ---
+        function updateData(key, value) {
+            if (!currentData) return;
+            currentData[key] = value;
+        }
+
+        function updateEntry(field, value) {
+            if (!currentData) return;
+            if (!currentData.entries) currentData.entries = {};
+
+            if (value === '' || value === null) {
+                currentData.entries[field] = null;
+            } else {
+                currentData.entries[field] = Number(value);
+            }
+        }
+
+        function formatFinalData(data) {
+            const finalData = JSON.parse(JSON.stringify(data));
+            if (finalData.date === "") finalData.date = null;
+            if (!finalData.entries) finalData.entries = {};
+            const expectedFields = ['cash', 'gpay', 'system', 'expense', 'addition'];
+            expectedFields.forEach(f => {
+                if (finalData.entries[f] === undefined) {
+                    finalData.entries[f] = null;
+                }
+            });
+            return finalData;
+        }
+
+        // --- Final Export ---
+        function downloadJSON() {
+            if (!currentData) return;
+
+            const finalData = formatFinalData(currentData);
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "accounting_structured.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        async function sendToN8n() {
+            if (!currentData) return;
+
+            const finalData = formatFinalData(currentData);
+
+            const btn = document.getElementById('n8nBtn');
+            const statusDiv = document.getElementById('n8nStatus');
+
+            btn.innerText = 'Sending...';
+            btn.style.opacity = '0.7';
+            btn.disabled = true;
+            statusDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('http://100.126.72.53:5678/webhook/sheets', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(finalData)
+                });
+
+                if (response.ok) {
+                    statusDiv.innerText = '✅ Successfully sent to n8n!';
+                    statusDiv.style.color = '#10b981';
+                } else {
+                    throw new Error('Webhook returned ' + response.status);
+                }
+            } catch (error) {
+                statusDiv.innerText = '❌ Error: ' + error.message;
+                statusDiv.style.color = '#b91c1c';
+            } finally {
+                btn.innerText = 'Sync to n8n (Sheets)';
+                btn.style.opacity = '1';
+                btn.disabled = false;
+                statusDiv.style.display = 'block';
+            }
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+        }
+    </script>
+
+</body>
+
+</html>
